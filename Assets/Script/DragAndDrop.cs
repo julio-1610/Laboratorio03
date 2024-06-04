@@ -1,11 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
 public class DragAndDrop : MonoBehaviour
 {
     private bool _mouseState;
     private GameObject target;
+    private Vector3 originalScale;
+    private bool _scaleUp;
     public Vector3 screenSpace;
     public Vector3 offset;
 
@@ -14,56 +15,62 @@ public class DragAndDrop : MonoBehaviour
     {
 
     }
+
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
         {
-
             RaycastHit hitInfo;
             target = GetClickedObject(out hitInfo);
             if (target != null)
             {
                 _mouseState = true;
-                ChangeScale();
+                _scaleUp = Input.GetMouseButtonDown(0); // True if left click, false if right click
+                originalScale = target.transform.localScale;
                 screenSpace = Camera.main.WorldToScreenPoint(target.transform.position);
                 offset = target.transform.position - Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenSpace.z));
             }
         }
-        if (Input.GetMouseButtonUp(0))
+
+        if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1))
         {
+            if (target != null)
+            {
+                ChangeScale(_scaleUp);
+                target = null;
+            }
             _mouseState = false;
         }
-        if (_mouseState)
+
+        if (_mouseState && target != null)
         {
-            //keep track of the mouse position
+            // Keep track of the mouse position
             var curScreenSpace = new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenSpace.z);
 
-            //convert the screen mouse position to world point and adjust with offset
+            // Convert the screen mouse position to world point and adjust with offset
             var curPosition = Camera.main.ScreenToWorldPoint(curScreenSpace) + offset;
 
-            //update the position of the object in the world
+            // Update the position of the object in the world
             target.transform.position = curPosition;
         }
     }
 
-
-    public void ChangeScale()
+    public void ChangeScale(bool scaleUp)
     {
+        float scaleFactor = scaleUp ? 1.5f : 1 / 1.5f; // Increase or decrease scale
+        target.transform.localScale = originalScale * scaleFactor;
 
-        target.transform.localScale = target.transform.localScale * 1.5f;
-        
         Vector3 pos = target.transform.position;
-        pos.z = pos.z + (1.80f* target.transform.localScale.x);
+        pos.z += scaleUp ? 1.80f * (scaleFactor - 1) : -1.80f * (1 - scaleFactor); // Adjust position based on scale change
         target.transform.position = pos;
-
     }
 
     GameObject GetClickedObject(out RaycastHit hit)
     {
         GameObject target = null;
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray.origin, ray.direction * 10, out hit))
+        if (Physics.Raycast(ray.origin, ray.direction * 10, out hit) && hit.collider.gameObject.tag != "Floor")
         {
             target = hit.collider.gameObject;
         }
@@ -71,4 +78,5 @@ public class DragAndDrop : MonoBehaviour
         return target;
     }
 }
+
 
